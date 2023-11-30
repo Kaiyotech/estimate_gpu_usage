@@ -41,7 +41,7 @@ def run_actual(network_shape, batch_size, data_bytes):
     cuda_memory_cached = th.cuda.memory_reserved(device)
     print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
     print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
-    print(th.cuda.memory_summary(device))
+    # print(th.cuda.memory_summary(device))
 
 
 if __name__ == "__main__":
