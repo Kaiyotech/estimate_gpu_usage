@@ -11,7 +11,9 @@ class SimpleFeedForwardNN(nn.Module):
             layers.append(nn.Linear(sizes[i], sizes[i + 1], dtype=dtype))
             # Apply LeakyReLU activation except for the output layer
             if i < len(sizes) - 2:
-                layers.append(nn.LeakyReLU())
+                # layers.append(nn.LeakyReLU())
+                # changed to ReLU
+                layers.append(nn.ReLU())
 
         self.network = nn.Sequential(*layers)
 
