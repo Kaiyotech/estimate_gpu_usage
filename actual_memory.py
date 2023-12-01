@@ -8,6 +8,7 @@ import torch.optim as optim
 from parse_input import parse_input
 from test_optimizer import Adam
 import time
+from torch.autograd import profiler
 
 def run_actual(network_shape, batch_size, data_bytes):
     if data_bytes == 4:
@@ -32,38 +33,43 @@ def run_actual(network_shape, batch_size, data_bytes):
     num_steps = 5
     rounds = 100
     forward_batch = 10_000
-    for i in range(num_steps):
-        input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
-        target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
+    with profiler.profile(use_cuda=True) as prof:
+        for i in range(num_steps):
+            input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
+            target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
+            with profiler.record_function("forward"):
+                output = model(input_data)
+                loss = criterion(output, target_data)
 
-        output = model(input_data)
-        loss = criterion(output, target_data)
+            with profiler.record_function("backward"):
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+            print(f"On Step {i}")
+            cuda_memory_allocated = th.cuda.memory_allocated(device)
+            cuda_memory_cached = th.cuda.memory_reserved(device)
+            cuda_max_allocated = th.cuda.max_memory_allocated(device)
+            print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
+            print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
+            print("CUDA Max Allocated Since Start", cuda_max_allocated / (1024 ** 3), "GB")
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-        print(f"On Step {i}")
-        cuda_memory_allocated = th.cuda.memory_allocated(device)
-        cuda_memory_cached = th.cuda.memory_reserved(device)
-        cuda_max_allocated = th.cuda.max_memory_allocated(device)
-        print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
-        print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
-        print("CUDA Max Allocated Since Start", cuda_max_allocated / (1024 ** 3), "GB")
+            # add some forward passes to simulate reinforcement learning batched on the GPU
+            # 100 rounds of 10_000 simulates 1 million steps
 
-        # add some forward passes to simulate reinforcement learning batched on the GPU
-        # 100 rounds of 10_000 simulates 1 million steps
-
-        for _ in range(rounds):
-            input_data = th.randn(forward_batch, input_size, dtype=dtype).to(device)
-            model.forward(input_data)
-    # cuda_memory_allocated = th.cuda.memory_allocated(device)
-    # cuda_memory_cached = th.cuda.memory_reserved(device)
-    # print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
-    # print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
-    # print(th.cuda.memory_summary(device))
-    stop = time.time()
-    print(f"Took {stop - start} time")
+            for _ in range(rounds):
+                with profiler.record_function("forward_small"):
+                    input_data = th.randn(forward_batch, input_size, dtype=dtype).to(device)
+                    model.forward(input_data)
+        # cuda_memory_allocated = th.cuda.memory_allocated(device)
+        # cuda_memory_cached = th.cuda.memory_reserved(device)
+        # print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
+        # print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
+        # print(th.cuda.memory_summary(device))
+        stop = time.time()
+        print(f"Took {stop - start} time")
+        # Print the memory profile
+        print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
 
 
 if __name__ == "__main__":
