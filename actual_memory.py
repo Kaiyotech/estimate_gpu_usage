@@ -46,6 +46,11 @@ def run_actual(network_shape, batch_size, data_bytes):
         print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
         print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
         print("CUDA Max Allocated Since Start", cuda_max_allocated / (1024 ** 3), "GB")
+
+        # add some forward passes to simulate reinforcement learning batched on the GPU
+        for _ in range(1000):
+            input_data = th.randn(10_000, input_size, dtype=dtype).to(device)
+            model.forward(input_data)
     # cuda_memory_allocated = th.cuda.memory_allocated(device)
     # cuda_memory_cached = th.cuda.memory_reserved(device)
     # print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
