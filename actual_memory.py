@@ -8,7 +8,8 @@ import torch.optim as optim
 from parse_input import parse_input
 from test_optimizer import Adam
 import time
-from torch.autograd import profiler
+# from torch.autograd import profiler
+from torch.profiler import profile, record_function, ProfilerActivity
 
 def run_actual(network_shape, batch_size, data_bytes):
     if data_bytes == 4:
@@ -33,15 +34,16 @@ def run_actual(network_shape, batch_size, data_bytes):
     num_steps = 5
     rounds = 100
     forward_batch = 10_000
-    with profiler.profile(use_cuda=True) as prof:
+    with profile(activities=[ ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True,
+                 profile_memory=True, use_cuda=True) as prof:
         for i in range(num_steps):
             input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
             target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
-            with profiler.record_function("forward"):
+            with prof.record_function("forward"):
                 output = model(input_data)
                 loss = criterion(output, target_data)
 
-            with profiler.record_function("backward"):
+            with prof.record_function("backward"):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -58,7 +60,7 @@ def run_actual(network_shape, batch_size, data_bytes):
             # 100 rounds of 10_000 simulates 1 million steps
 
             for _ in range(rounds):
-                with profiler.record_function("forward_small"):
+                with prof.record_function("forward_small"):
                     input_data = th.randn(forward_batch, input_size, dtype=dtype).to(device)
                     model.forward(input_data)
         # cuda_memory_allocated = th.cuda.memory_allocated(device)
@@ -69,7 +71,7 @@ def run_actual(network_shape, batch_size, data_bytes):
         stop = time.time()
         print(f"Took {stop - start} time")
         # Print the memory profile
-    print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
+    print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=20))
 
 
 if __name__ == "__main__":
