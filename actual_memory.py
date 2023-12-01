@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from parse_input import parse_input
 from test_optimizer import Adam
+import time
 
 def run_actual(network_shape, batch_size, data_bytes):
     if data_bytes == 4:
@@ -27,7 +28,10 @@ def run_actual(network_shape, batch_size, data_bytes):
     criterion = nn.MSELoss()
     # optimizer = optim.Adam(model.parameters(), lr=1e-4)
     optimizer = Adam(model.parameters(), lr=1e-4)
+    start = time.time()
     num_steps = 5
+    rounds = 100
+    forward_batch = 10_000
     for i in range(num_steps):
         input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
         target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
@@ -49,14 +53,17 @@ def run_actual(network_shape, batch_size, data_bytes):
 
         # add some forward passes to simulate reinforcement learning batched on the GPU
         # 100 rounds of 10_000 simulates 1 million steps
-        for _ in range(100):
-            input_data = th.randn(10_000, input_size, dtype=dtype).to(device)
+
+        for _ in range(rounds):
+            input_data = th.randn(forward_batch, input_size, dtype=dtype).to(device)
             model.forward(input_data)
     # cuda_memory_allocated = th.cuda.memory_allocated(device)
     # cuda_memory_cached = th.cuda.memory_reserved(device)
     # print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
     # print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
     # print(th.cuda.memory_summary(device))
+    stop = time.time()
+    print(f"Took {stop - start} time")
 
 
 if __name__ == "__main__":
