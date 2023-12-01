@@ -34,16 +34,16 @@ def run_actual(network_shape, batch_size, data_bytes):
     num_steps = 5
     rounds = 100
     forward_batch = 10_000
-    with profile(activities=[ ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True,
-                 profile_memory=True, use_cuda=True) as prof:
+    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True,
+                 profile_memory=True) as prof:
         for i in range(num_steps):
             input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
             target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
-            with prof.record_function("forward"):
+            with record_function("forward"):
                 output = model(input_data)
                 loss = criterion(output, target_data)
 
-            with prof.record_function("backward"):
+            with record_function("backward"):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -60,7 +60,7 @@ def run_actual(network_shape, batch_size, data_bytes):
             # 100 rounds of 10_000 simulates 1 million steps
 
             for _ in range(rounds):
-                with prof.record_function("forward_small"):
+                with record_function("forward_small"):
                     input_data = th.randn(forward_batch, input_size, dtype=dtype).to(device)
                     model.forward(input_data)
         # cuda_memory_allocated = th.cuda.memory_allocated(device)
