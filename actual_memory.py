@@ -6,7 +6,7 @@ from model import SimpleFeedForwardNN
 import torch.nn as nn
 import torch.optim as optim
 from parse_input import parse_input
-
+from test_optimizer import Adam
 
 def run_actual(network_shape, batch_size, data_bytes):
     if data_bytes == 4:
@@ -25,8 +25,10 @@ def run_actual(network_shape, batch_size, data_bytes):
     model = SimpleFeedForwardNN(input_size, list(hidden_sizes), output_size, dtype)
     model.to(device)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
-    for _ in range(10):
+    # optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = Adam(model.parameters(), lr=1e-4)
+    num_steps = 5
+    for i in range(num_steps):
         input_data = th.randn(batch_size, input_size, dtype=dtype).to(device)
         target_data = th.randn((batch_size, output_size), dtype=dtype).to(device)
 
@@ -37,10 +39,17 @@ def run_actual(network_shape, batch_size, data_bytes):
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-    cuda_memory_allocated = th.cuda.memory_allocated(device)
-    cuda_memory_cached = th.cuda.memory_reserved(device)
-    print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
-    print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
+        print(f"On Step {i}")
+        cuda_memory_allocated = th.cuda.memory_allocated(device)
+        cuda_memory_cached = th.cuda.memory_reserved(device)
+        cuda_max_allocated = th.cuda.max_memory_allocated(device)
+        print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
+        print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
+        print("CUDA Max Allocated Since Start", cuda_max_allocated / (1024 ** 3), "GB")
+    # cuda_memory_allocated = th.cuda.memory_allocated(device)
+    # cuda_memory_cached = th.cuda.memory_reserved(device)
+    # print("CUDA Memory Allocated:", cuda_memory_allocated / (1024 ** 3), "GB")
+    # print("CUDA Memory Cached:", cuda_memory_cached / (1024 ** 3), "GB")
     # print(th.cuda.memory_summary(device))
 
 
