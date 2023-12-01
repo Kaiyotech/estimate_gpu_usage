@@ -69,7 +69,7 @@ def run_actual(network_shape, batch_size, data_bytes):
         stop = time.time()
         print(f"Took {stop - start} time")
         # Print the memory profile
-        print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
+    print(prof.key_averages().table(sort_by="self_cuda_memory_usage", row_limit=10))
 
 
 if __name__ == "__main__":
